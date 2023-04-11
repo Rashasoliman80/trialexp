@@ -1,42 +1,38 @@
 # Python classes for importing pyControl data files and representing pyControl 
 # sessions and experiments.  Dependencies: Python 3.5+, Numpy.
-from cmath import isnan, nan
-
-import os
-from pathlib import Path
-import pickle
-import re
-import datetime
-import warnings
 import datetime
 import itertools
-from itertools import compress
-
+import os
+import pickle
+import re
+import warnings
+from cmath import isnan, nan
 from collections import namedtuple
+from itertools import compress
+from math import ceil
 from operator import itemgetter
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
-from math import ceil
-from scipy.signal import butter, filtfilt, decimate
-from scipy.stats import linregress, zscore
-
 import plotly.graph_objects as go
-from plotly.validators.scatter.marker import SymbolValidator
 from plotly.subplots import make_subplots
-
-from trialexp.utils.pycontrol_utilities import *
-from trialexp.utils.data_organisation import *
-from trialexp.process.pyphotometry.photometry_functional import *
-from trialexp.process.pyphotometry.utils import *
-from trialexp.utils.DLC_utilities import *
-from trialexp.utils.rsync import *
+from plotly.validators.scatter.marker import SymbolValidator
+from scipy.signal import butter, decimate, filtfilt
+from scipy.stats import linregress, zscore
 
 from trialexp.dataset_classes.trial_dataset_classes import *
 
-Event = namedtuple('Event', ['time','name'])
-State = namedtuple('State', ['time','name'])
+from trialexp.process.pyphotometry.photometry_functional import *
+from trialexp.process.pyphotometry.utils import *
+from trialexp.process.pycontrol.utils import *
+
+from trialexp.utils.data_organisation import *
+from trialexp.utils.DLC_utilities import *
+from trialexp.utils.pycontrol_utilities import *
+from trialexp.utils.rsync import *
+
+
 
 # Custom type, assess usefulness
 NoneType = type(None)
@@ -658,6 +654,8 @@ class Session():
         self.df_conditions['success'] = False
         # self.df_events['success'] = False
         #print(self.task_name)
+        
+        
         # To perform for all Go-NoGo variants of the task (list below)
         if self.task_name in ['reaching_go_nogo', 'reaching_go_nogo_jc', 'reaching_go_nogo_opto_continuous',
             'reaching_go_nogo_opto_sinusoid' , 'reaching_go_nogo_opto_sinusoid_spout', 
@@ -691,12 +689,13 @@ class Session():
 
             # self.triggers[0] refers to CS_Go triggering event most of the time whereas self.triggers[1] refers to CS_NoGo
             # find if spout event within timelim for go trials
-            go_success = self.df_events.loc[
-                (self.df_events[self.df_events.trigger == self.triggers[0]].index),'spout_trial_time'].apply(
-                lambda x: find_if_event_within_timelim(x, self.timelim))
-            go_success_idx = go_success[go_success == True].index
-            # categorize successful go trials which have a spout event within timelim
-            self.df_conditions.loc[(go_success_idx),'success'] = True
+                go_success = self.df_events.loc[
+                    (self.df_events[self.df_events.trigger == self.triggers[0]].index),'spout_trial_time'].apply(
+                    lambda x: find_if_event_within_timelim(x, self.timelim))
+                go_success_idx = go_success[go_success == True].index
+                # categorize successful go trials which have a spout event within timelim
+                self.df_conditions.loc[(go_success_idx),'success'] = True
+
             # self.df_events.loc[(go_success_idx),'success'] = True
 
         # To perform for cued-uncued version of the go task
@@ -735,7 +734,7 @@ class Session():
             self.df_conditions.loc[(reach_success_bool), 'success'] = True
 
         # To perform for delayed tasks (check whether a US_end_timer was preceded by a spout)
-        elif self.task_name in ['reaching_go_spout_bar_nov22']:
+        elif self.task_name in ['reaching_go_spout_bar_nov22','reaching_go_spout_bar_mar23']:
 
             reach_time_before_reward = self.df_events.loc[:,['spout_trial_time','US_end_timer_trial_time']].apply(
                     lambda x: find_last_time_before_list(x['spout_trial_time'], x['US_end_timer_trial_time']), axis=1)    
@@ -1490,8 +1489,9 @@ class Session():
                assert k in self.times.keys(), f"{k} is not found in self.time.keys()"
 
         if export_smrx:
-            from sonpy import lib as sp
             import time
+
+            from sonpy import lib as sp
             if smrx_filename is None:
                 raise Exception('smrx_filename is required')
             #TODO assert .smlx
@@ -2582,7 +2582,7 @@ class Experiment():
                     # https://stackoverflow.com/questions/73800841/add-series-as-a-new-row-into-dataframe-triggers-futurewarning
                     # https://stackoverflow.com/questions/71465386/why-pd-concat-of-two-dataframe-leads-to-futurewarning-behavior-when-concatena
         
-        df_conditions_exp['condition_ID'] = df_conditions_exp['condition_ID'].astype(int)         
+        # df_conditions_exp['condition_ID'] = df_conditions_exp['condition_ID'].astype(int)         
         ev_dataset = Event_Dataset(df_events_exp, df_conditions_exp)
 
         ev_dataset.conditions = conditions_list

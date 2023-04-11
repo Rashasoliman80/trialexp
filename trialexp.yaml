@@ -17,7 +17,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.8
+  - python=3.9
   - pip
   - numpy
   - scipy
@@ -31,5 +31,10 @@ dependencies:
   - seaborn
   - papermill
   - plotly
+  - xarray
   - pip:
-    - "-e setup.py"
+    - git+https://github.com/teristam/snakehelper.git
+    - sonpy
+    - h5netcdf
+    - snakemake
+
